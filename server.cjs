@@ -4,13 +4,14 @@ const mongoose = require('mongoose')
 const connectDB = require('./config/db.cjs')
 const apiRouter = require('./routes/api.cjs')
 const app = express()
+require('dotenv').config()
 
 // Middleware
 app.use(
   cors({
     origin: [
-      'https://git-folio-frontend-7l7h.vercel.app/', // Your frontend URL
-      'http://localhost:3000', // For local testing
+      process.env.FRONTEND_URL,
+      process.env.LOCAL_URL, // For local testing
     ],
     credentials: true,
   })
