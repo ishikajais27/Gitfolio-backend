@@ -6,7 +6,15 @@ const apiRouter = require('./routes/api.cjs')
 const app = express()
 
 // Middleware
-app.use(cors())
+app.use(
+  cors({
+    origin: [
+      'https://git-folio-frontend-7l7h.vercel.app/', // Your frontend URL
+      'http://localhost:3000', // For local testing
+    ],
+    credentials: true,
+  })
+)
 app.use(express.json())
 
 // Database connection
