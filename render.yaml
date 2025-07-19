@@ -1,12 +1,15 @@
 services:
   - type: web
     name: gitfolio-backend
-    runtime: node
+    env: node
     buildCommand: npm install
     startCommand: node server.cjs
-    env: node
     envVars:
-      - key: MONGODB_URI
-        value: your_mongodb_connection_string
       - key: PORT
         value: 5000
+      - key: GITHUB_TOKEN
+        value: ${GITHUB_TOKEN} # This should reference an environment variable, not the actual token
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://git-folio-frontend-c1gx-jze26qjou-ishikajais27s-projects.vercel.app/
