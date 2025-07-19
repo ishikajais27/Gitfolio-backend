@@ -61,19 +61,45 @@ const apiRouter = require('./routes/api.cjs')
 
 const app = express()
 
-// CORS Configuration
+const allowedOrigins = [
+  'https://git-folio-frontend-o5jy.vercel.app',
+  'http://localhost:3000', // For local development
+]
+
 const corsOptions = {
-  origin: [
-    'https://git-folio-frontend-o5jy.vercel.app/',
-    'http://localhost:3000', // For local development
-  ],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }
 
-app.use(cors(corsOptions)) // Use CORS middleware with options
+// Apply CORS middleware
+app.use(cors(corsOptions))
+
+// Handle preflight requests
+app.options('*', cors(corsOptions)) // Enable preflight for all routes
+
 app.use(express.json())
+
+// // CORS Configuration
+// const corsOptions = {
+//   origin: [
+//     'https://git-folio-frontend-o5jy.vercel.app/',
+//     'http://localhost:3000', // For local development
+//   ],
+//   methods: ['GET', 'POST', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+//   credentials: true,
+// }
+
+// app.use(cors(corsOptions)) // Use CORS middleware with options
+// app.use(express.json())
 
 // Database Connection
 connectDB()
