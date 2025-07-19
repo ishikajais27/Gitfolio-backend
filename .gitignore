@@ -21,4 +21,4 @@ pids
 
 # Build outputs
 dist/
-build/
+build/".env" 
