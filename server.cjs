@@ -62,21 +62,18 @@ const apiRouter = require('./routes/api.cjs')
 const app = express()
 
 // CORS Configuration
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'http://localhost:3000',
-].filter(Boolean)
+const corsOptions = {
+  origin: [
+    'https://git-folio-frontend-o5jy.vercel.app/',
+    'http://localhost:3000', // For local development
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}
 
-app.use(
-  cors({
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-)
-
+app.use(cors(corsOptions)) // Use CORS middleware with options
 app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
 
 // Database Connection
 connectDB()
