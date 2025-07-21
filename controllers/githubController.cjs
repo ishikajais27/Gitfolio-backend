@@ -414,62 +414,45 @@ exports.generateProfile = async (req, res) => {
       return res.status(400).json({ error: 'GitHub username is required' })
 
     const currentTemplateVersion = 4
-    let profile = await Profile.findOne({ username, template })
 
-    if (
-      !profile ||
-      forceRefresh ||
-      (profile.templateVersion || 1) !== currentTemplateVersion
-    ) {
-      const profileData = await this.fetchGitHubData(username)
+    // Always delete existing profile for this username-template combination first
+    await Profile.deleteOne({ username, template })
 
-      const processedSocialLinks = Object.entries(socialLinks)
-        .filter(([_, url]) => url?.trim())
-        .map(([platform, url]) => ({
-          platform,
-          url: formatSocialUrl(platform, url),
-          icon: getSocialIcon(platform),
-          alt: `${platform} logo`,
-        }))
+    // Fetch fresh GitHub data
+    const profileData = await this.fetchGitHubData(username)
 
-      const templates = loadTemplates()
-      if (!templates[template])
-        return res.status(400).json({ error: 'Template not found' })
+    // Process social links
+    const processedSocialLinks = Object.entries(socialLinks)
+      .filter(([_, url]) => url?.trim())
+      .map(([platform, url]) => ({
+        platform,
+        url: formatSocialUrl(platform, url),
+        icon: getSocialIcon(platform),
+        alt: `${platform} logo`,
+      }))
 
-      const markdown = applyTemplateReplacements(templates[template], {
-        ...profileData,
-        socialLinks: processedSocialLinks,
-      })
+    // Load and apply template
+    const templates = loadTemplates()
+    if (!templates[template])
+      return res.status(400).json({ error: 'Template not found' })
 
-      const profileDataToSave = {
-        ...profileData,
-        markdownContent: markdown,
-        template,
-        socialLinks: processedSocialLinks,
-        lastUpdated: new Date(),
-        templateVersion: currentTemplateVersion,
-      }
+    const markdown = applyTemplateReplacements(templates[template], {
+      ...profileData,
+      socialLinks: processedSocialLinks,
+    })
 
-      profile = await Profile.findOneAndUpdate(
-        { username, template },
-        profileDataToSave,
-        {
-          new: true,
-          upsert: true,
-          setDefaultsOnInsert: true,
-        }
-      )
-    }
+    // Create new profile
+    const profile = await new Profile({
+      ...profileData,
+      markdownContent: markdown,
+      template,
+      socialLinks: processedSocialLinks,
+      lastUpdated: new Date(),
+      templateVersion: currentTemplateVersion,
+    }).save()
 
     res.json(profile)
   } catch (error) {
-    if (error.code === 11000) {
-      // Handle duplicate key error specifically
-      return res.status(400).json({
-        error: 'Profile with this username and template already exists',
-        details: 'Try using a different template or force refresh',
-      })
-    }
     const status = error.message.includes('rate limit')
       ? 429
       : error.message.includes('not found')
