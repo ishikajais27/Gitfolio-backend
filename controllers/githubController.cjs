@@ -334,6 +334,74 @@ exports.fetchGitHubData = async (username) => {
   }
 }
 
+// exports.generateProfile = async (req, res) => {
+//   try {
+//     const {
+//       username,
+//       template = 'template1',
+//       socialLinks = {},
+//       forceRefresh = false,
+//     } = req.body
+//     if (!username)
+//       return res.status(400).json({ error: 'GitHub username is required' })
+
+//     const currentTemplateVersion = 4
+//     let profile = await Profile.findOne({ username, template })
+
+//     if (
+//       !profile ||
+//       forceRefresh ||
+//       profile.templateVersion !== currentTemplateVersion
+//     ) {
+//       const profileData = await this.fetchGitHubData(username)
+
+//       const processedSocialLinks = Object.entries(socialLinks)
+//         .filter(([_, url]) => url?.trim())
+//         .map(([platform, url]) => ({
+//           platform,
+//           url: formatSocialUrl(platform, url),
+//           icon: getSocialIcon(platform),
+//           alt: `${platform} logo`,
+//         }))
+
+//       const templates = loadTemplates()
+//       if (!templates[template])
+//         return res.status(400).json({ error: 'Template not found' })
+
+//       const markdown = applyTemplateReplacements(templates[template], {
+//         ...profileData,
+//         socialLinks: processedSocialLinks,
+//       })
+
+//       const profileDataToSave = {
+//         ...profileData,
+//         markdownContent: markdown,
+//         template,
+//         socialLinks: processedSocialLinks,
+//         lastUpdated: new Date(),
+//         templateVersion: currentTemplateVersion,
+//       }
+
+//       profile = profile
+//         ? await Profile.findOneAndUpdate(
+//             { username, template },
+//             profileDataToSave,
+//             { new: true }
+//           )
+//         : await new Profile(profileDataToSave).save()
+//     }
+
+//     res.json(profile)
+//   } catch (error) {
+//     const status = error.message.includes('rate limit')
+//       ? 429
+//       : error.message.includes('not found')
+//       ? 404
+//       : 500
+//     res.status(status).json({ error: error.message })
+//   }
+// }
+
 exports.generateProfile = async (req, res) => {
   try {
     const {
@@ -351,7 +419,7 @@ exports.generateProfile = async (req, res) => {
     if (
       !profile ||
       forceRefresh ||
-      profile.templateVersion !== currentTemplateVersion
+      (profile.templateVersion || 1) !== currentTemplateVersion
     ) {
       const profileData = await this.fetchGitHubData(username)
 
@@ -382,17 +450,26 @@ exports.generateProfile = async (req, res) => {
         templateVersion: currentTemplateVersion,
       }
 
-      profile = profile
-        ? await Profile.findOneAndUpdate(
-            { username, template },
-            profileDataToSave,
-            { new: true }
-          )
-        : await new Profile(profileDataToSave).save()
+      profile = await Profile.findOneAndUpdate(
+        { username, template },
+        profileDataToSave,
+        {
+          new: true,
+          upsert: true,
+          setDefaultsOnInsert: true,
+        }
+      )
     }
 
     res.json(profile)
   } catch (error) {
+    if (error.code === 11000) {
+      // Handle duplicate key error specifically
+      return res.status(400).json({
+        error: 'Profile with this username and template already exists',
+        details: 'Try using a different template or force refresh',
+      })
+    }
     const status = error.message.includes('rate limit')
       ? 429
       : error.message.includes('not found')
